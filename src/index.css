@@ -10,3 +10,7 @@ html, body {
   position: relative;
   min-height: 100vh;
 }
+
+input::placeholder, textarea::placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
