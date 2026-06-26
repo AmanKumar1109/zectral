@@ -77,6 +77,7 @@ export default function LandingPage() {
   const [muted, setMuted] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', message: '' })
+  const [formStatus, setFormStatus] = useState('idle') // idle | sending | success | error
   const videoRef = useRef(null)
 
   /* Hero refs */
@@ -571,30 +572,129 @@ export default function LandingPage() {
             </div>
 
             {/* Form */}
-            <form onSubmit={e => { e.preventDefault(); console.log('Form:', form) }}
-              style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <form
+              onSubmit={async e => {
+                e.preventDefault()
+                setFormStatus('sending')
+                try {
+                  const res = await fetch('https://api.web3forms.com/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                    body: JSON.stringify({
+                      access_key: '90283c65-bc39-4af5-a3d8-50df4bc1201e',
+                      subject: 'New Demo Request — Zectral',
+                      from_name: 'Zectral Website',
+                      name: form.name,
+                      email: form.email,
+                      message: form.message,
+                      botcheck: '',
+                    }),
+                  })
+                  const data = await res.json()
+                  if (data.success) {
+                    setFormStatus('success')
+                    setForm({ name: '', email: '', message: '' })
+                  } else {
+                    setFormStatus('error')
+                  }
+                } catch {
+                  setFormStatus('error')
+                }
+              }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+            >
+              {/* Web3Forms hidden botcheck */}
+              <input type="checkbox" name="botcheck" style={{ display: 'none' }} />
+
               {[{ name: 'name', label: 'YOUR NAME', type: 'text', placeholder: 'Jane Doe' },
               { name: 'email', label: 'WORK EMAIL ADDRESS', type: 'email', placeholder: 'jane@company.com' }].map(f => (
                 <div key={f.name}>
                   <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.2em', color: '#ffffff', marginBottom: 8, textTransform: 'uppercase' }}>{f.label}</label>
-                  <input type={f.type} placeholder={f.placeholder} value={form[f.name]}
+                  <input
+                    type={f.type}
+                    placeholder={f.placeholder}
+                    value={form[f.name]}
+                    required
+                    disabled={formStatus === 'sending' || formStatus === 'success'}
                     onChange={e => setForm(p => ({ ...p, [f.name]: e.target.value }))}
-                    style={fieldStyle} onFocus={onFocus} onBlur={onBlur} />
+                    style={{ ...fieldStyle, opacity: (formStatus === 'sending' || formStatus === 'success') ? 0.5 : 1 }}
+                    onFocus={onFocus} onBlur={onBlur}
+                  />
                 </div>
               ))}
+
               <div>
                 <label style={{ display: 'block', fontSize: 9, letterSpacing: '0.2em', color: '#ffffff', marginBottom: 8, textTransform: 'uppercase' }}>YOUR TEAM AND WORKFLOW</label>
-                <textarea rows={5} placeholder="Tell us about your team's current cloud provider and infrastructure needs..." value={form.message}
+                <textarea
+                  rows={5}
+                  placeholder="Tell us about your team's current cloud provider and infrastructure needs..."
+                  value={form.message}
+                  required
+                  disabled={formStatus === 'sending' || formStatus === 'success'}
                   onChange={e => setForm(p => ({ ...p, message: e.target.value }))}
-                  style={{ ...fieldStyle, resize: 'vertical' }} onFocus={onFocus} onBlur={onBlur} />
+                  style={{ ...fieldStyle, resize: 'vertical', opacity: (formStatus === 'sending' || formStatus === 'success') ? 0.5 : 1 }}
+                  onFocus={onFocus} onBlur={onBlur}
+                />
               </div>
-              <button type="submit" style={{ marginTop: 8, padding: '13px 0', width: '100%', background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.5)', borderRadius: 3, color: '#ffffff', fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}
-                onMouseEnter={e => gsap.to(e.currentTarget, { background: 'rgba(255,255,255,.2)', borderColor: '#ffffff', duration: .2 })}
-                onMouseLeave={e => gsap.to(e.currentTarget, { background: 'rgba(255,255,255,.1)', borderColor: 'rgba(255,255,255,.5)', duration: .2 })}
-              >
-                REQUEST DEMO
-                <svg style={{ width: 12, height: 12 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-              </button>
+
+              {/* Status banners */}
+              {formStatus === 'success' && (
+                <div style={{
+                  padding: '12px 16px', borderRadius: 6, fontSize: 11, letterSpacing: '0.1em',
+                  background: 'rgba(100,255,150,0.12)', border: '1px solid rgba(100,255,150,0.35)',
+                  color: '#a0ffb8', display: 'flex', alignItems: 'center', gap: 10
+                }}>
+                  <span style={{ fontSize: 16 }}>✓</span>
+                  MESSAGE SENT! WE'LL BE IN TOUCH SHORTLY.
+                </div>
+              )}
+              {formStatus === 'error' && (
+                <div style={{
+                  padding: '12px 16px', borderRadius: 6, fontSize: 11, letterSpacing: '0.1em',
+                  background: 'rgba(255,80,80,0.12)', border: '1px solid rgba(255,80,80,0.35)',
+                  color: '#ffaaaa', display: 'flex', alignItems: 'center', gap: 10
+                }}>
+                  <span style={{ fontSize: 16 }}>✕</span>
+                  SOMETHING WENT WRONG. PLEASE TRY AGAIN.
+                  <button
+                    type="button"
+                    onClick={() => setFormStatus('idle')}
+                    style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: '#ffaaaa', cursor: 'pointer', fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase' }}
+                  >RETRY</button>
+                </div>
+              )}
+
+              {formStatus !== 'success' && (
+                <button
+                  type="submit"
+                  disabled={formStatus === 'sending'}
+                  style={{
+                    marginTop: 8, padding: '13px 0', width: '100%',
+                    background: formStatus === 'sending' ? 'rgba(255,255,255,.06)' : 'rgba(255,255,255,.1)',
+                    border: '1px solid rgba(255,255,255,.5)', borderRadius: 3, color: '#ffffff',
+                    fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase',
+                    cursor: formStatus === 'sending' ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={e => { if (formStatus !== 'sending') gsap.to(e.currentTarget, { background: 'rgba(255,255,255,.2)', borderColor: '#ffffff', duration: .2 }) }}
+                  onMouseLeave={e => gsap.to(e.currentTarget, { background: formStatus === 'sending' ? 'rgba(255,255,255,.06)' : 'rgba(255,255,255,.1)', borderColor: 'rgba(255,255,255,.5)', duration: .2 })}
+                >
+                  {formStatus === 'sending' ? (
+                    <>
+                      <svg style={{ width: 13, height: 13, animation: 'spin 1s linear infinite' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                      </svg>
+                      SENDING...
+                    </>
+                  ) : (
+                    <>
+                      REQUEST DEMO
+                      <svg style={{ width: 12, height: 12 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                    </>
+                  )}
+                </button>
+              )}
             </form>
           </div>
         </div>
